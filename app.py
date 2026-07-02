@@ -27,7 +27,7 @@ COST_PER_KM = 2500       # 1TEU(Ton)당 1km 운송비 (원)
 CO2_PER_KM = 1.15        # 1TEU(Ton)당 1km CO2 배출 (kg)
 SPEED_KM_H = 60          # 트럭 평균 속도 (km/h)
 
-# 지도 시각화를 위한 지역/항만 위경도 좌표 데이터 (신규 지역 추가)
+# 지도 시각화를 위한 지역/항만 위경도 좌표 데이터
 COORDS = {
     '인천항': [126.6052, 37.4563], '부산항': [129.0365, 35.1016],
     '서울': [126.9780, 37.5665], '경기도': [127.5183, 37.4138],
@@ -41,7 +41,7 @@ COORDS = {
     '원주': [127.9202, 37.3422]
 }
 
-# 내륙 이동 거리 매트릭스 (km 단위, 신규 지역 추가)
+# 내륙 이동 거리 매트릭스 (km 단위)
 dist_matrix = {
     '서울': {'인천항': 50, '부산항': 400}, '경기도': {'인천항': 60, '부산항': 380},
     '강원도': {'인천항': 200, '부산항': 350}, '충청도': {'인천항': 120, '부산항': 280},
@@ -59,7 +59,6 @@ dist_matrix = {
 # ==========================================
 @st.cache_data(ttl=3600)
 def fetch_public_data():
-    """공공데이터 API 호출 및 성장률 역산"""
     url = f"http://apis.data.go.kr/1192000/ContainerPerformanceService/getContainerPerformanceList?serviceKey={PUBLIC_API_KEY}&pageNo=1&numOfRows=10"
     try:
         api_status = "✅ 공공데이터 API 연동 성공 (정상 가동)"
@@ -94,7 +93,6 @@ st.title("🚢 지능형 국가 거점 항만 최적화 시뮬레이터")
 st.markdown(f"**시스템 상태:** {api_status_msg}")
 st.markdown("---")
 
-# 신규 지역 추가 반영
 initial_data = [
     {'지역': '서울', '현재 물류량(Ton)': 350000, '현재사용항만': '인천항', '향후선택항만': '인천항'},
     {'지역': '경기도', '현재 물류량(Ton)': 580000, '현재사용항만': '인천항', '향후선택항만': '인천항'},
@@ -112,8 +110,13 @@ initial_data = [
     {'지역': '포항', '현재 물류량(Ton)': 200000, '현재사용항만': '부산항', '향후선택항만': '부산항'},
     {'지역': '경주', '현재 물류량(Ton)': 95000, '현재사용항만': '부산항', '향후선택항만': '부산항'},
     {'지역': '전주', '현재 물류량(Ton)': 105000, '현재사용항만': '인천항', '향후선택항만': '인천항'},
-    {'지역': '원주', '현재 물류량(Ton)': 70000, '현재사용항만': '인천항', '향후선택항만': '인천항'},
+    {'지역': '원주', 'currently 물류량(Ton)': 70000, '현재사용항만': '인천항', '향후선택항만': '인천항'},
 ]
+# 오타 수정 적용 (currently -> 현재 물류량(Ton))
+for d in initial_data:
+    if 'currently 물류량(Ton)' in d:
+        d['현재 물류량(Ton)'] = d.pop('currently 물류량(Ton)')
+
 df_input = pd.DataFrame(initial_data)
 
 col_map, col_table = st.columns([1, 1.2])
@@ -122,7 +125,6 @@ with col_table:
     st.subheader("📝 지역별 물류 데이터 및 항만 선택")
     st.info("💡 향후 선택 항만을 변경하면 지도와 하단 그래프가 실시간으로 업데이트 됩니다.")
     
-    # 높이를 늘려 행이 많아져도 스크롤 없이 보기 좋게 설정
     edited_df = st.data_editor(
         df_input,
         column_config={
@@ -130,8 +132,48 @@ with col_table:
             "현재사용항만": st.column_config.SelectboxColumn(options=["인천항", "부산항"]),
             "향후선택항만": st.column_config.SelectboxColumn(options=["인천항", "부산항"])
         },
-        use_container_width=True, hide_index=True, height=600
+        use_container_width=True, hide_index=True, height=400
     )
+    
+    # 🔮 [신규 기능] 미래 예상 시나리오 체크박스 및 레이아웃
+    st.markdown("---")
+    enable_scenario = st.checkbox("🔮 특수 미래 외교/지경학적 예상 시나리오 도입 선언")
+    
+    scen_volume = 0
+    scen_port = "인천항"
+    scen_target_region = "여수"
+    scen_name = ""
+    scen_company = ""
+    
+    if enable_scenario:
+        st.markdown("#### 🚀 시나리오 세부 설정")
+        scen_col1, scen_col2 = st.columns(2)
+        
+        with scen_col1:
+            scen_type = st.radio("1. 핵심 지경학 시나리오 선택", ["북극항로 개통 노선", "미국 셰일에너지 교류 확대"])
+            scen_volume = st.number_input("2. 예상 추가 물류량 입력 (Ton)", value=150000, step=10000)
+            
+        with scen_col2:
+            scen_port = st.selectbox("3. 원료 입항 선택 항만", ["인천항", "부산항"])
+            scen_company_hub = st.selectbox("4. 가공/발전 대상 정유사 거점 선택", [
+                "GS칼텍스 (여수)", 
+                "HD현대오일뱅크 (충청도)", 
+                "SK이노베이션 (울산)"
+            ])
+            
+        # 선택된 정유사 매핑
+        if "GS칼텍스" in scen_company_hub:
+            scen_target_region = "여수"
+            scen_company = "GS칼텍스 여수공장"
+        elif "HD현대오일뱅크" in scen_company_hub:
+            scen_target_region = "충청도"
+            scen_company = "HD현대오일뱅크 대산공장"
+        else:
+            scen_target_region = "울산"
+            scen_company = "SK이노베이션 울산 CLX"
+            
+        scen_name = scen_type
+        st.success(f"🎯 반영 완료: [{scen_name}]를 통해 수입된 원료 {scen_volume:,} Ton이 [{scen_port}]에 선적되어 내륙의 [{scen_company}]으로 이동합니다.")
 
 with col_map:
     st.subheader("📍 향후 선택 항만 물류 네트워크")
@@ -145,6 +187,16 @@ with col_map:
             "region": row['지역'], "start": [start_lon, start_lat],
             "end": [end_lon, end_lat], "color": color
         })
+        
+    # 시나리오 활성화 시 지도에 특수 보라색 아크(Arc)선 추가
+    if enable_scenario and scen_volume > 0:
+        s_lon, s_lat = COORDS[scen_target_region]
+        p_lon, p_lat = COORDS[scen_port]
+        map_data.append({
+            "region": f"시나리오: {scen_company}", "start": [s_lon, s_lat],
+            "end": [p_lon, p_lat], "color": [155, 89, 182, 255] # 강조용 불투명 보라색
+        })
+        
     df_map = pd.DataFrame(map_data)
     
     view_state = pdk.ViewState(latitude=36.0, longitude=127.5, zoom=5.5, pitch=45)
@@ -155,13 +207,13 @@ with col_map:
         get_target_position="end",
         get_source_color="color",
         get_target_color="color",
-        get_width=3,
+        get_width=4,
         pickable=True,
     )
     st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, map_style="road"))
 
 # ==========================================
-# 4. 시뮬레이션 연산
+# 4. 시뮬레이션 연산 (기존 데이터 + 시나리오 추가 반영)
 # ==========================================
 years_range = np.arange(1, 51)
 asis_cost_list, tobe_cost_list = [], []
@@ -173,6 +225,7 @@ cum_asis_cost = cum_tobe_cost = cum_asis_co2 = cum_tobe_co2 = cum_asis_time = cu
 for y in years_range:
     y_asis_cost = y_tobe_cost = y_asis_co2 = y_tobe_co2 = y_asis_time = y_tobe_time = 0
     
+    # 기본 지역 물류 연산
     for _, row in edited_df.iterrows():
         r = row['지역']
         v = row['현재 물류량(Ton)'] * ((1 + current_growth/100) ** y) 
@@ -183,6 +236,25 @@ for y in years_range:
         y_asis_cost += v * d_asis * COST_PER_KM; y_tobe_cost += v * d_tobe * COST_PER_KM
         y_asis_co2 += v * d_asis * CO2_PER_KM; y_tobe_co2 += v * d_tobe * CO2_PER_KM
         y_asis_time += v * (d_asis / SPEED_KM_H); y_tobe_time += v * (d_tobe / SPEED_KM_H)
+        
+    # 시나리오 체크 시 추가 연산 반영 (To-Be 경로에 추가 물류량 반영)
+    if enable_scenario and scen_volume > 0:
+        # 시나리오 물류량도 성장률의 영향을 받아 미래에 누적된다고 가정
+        v_scen = scen_volume * ((1 + current_growth/100) ** y)
+        d_scen = dist_matrix[scen_target_region][scen_port]
+        
+        # As-Is 상황에서는 해당 시나리오 준비가 안 되어 물류 이동 거리가 비효율적인 반대편 항만을 강제 사용한다고 가정 (패널티 부여 계산)
+        alt_port = "부산항" if scen_port == "인천항" else "인천항"
+        d_scen_alt = dist_matrix[scen_target_region][alt_port]
+        
+        y_asis_cost += v_scen * d_scen_alt * COST_PER_KM
+        y_tobe_cost += v_scen * d_scen * COST_PER_KM
+        
+        y_asis_co2 += v_scen * d_scen_alt * CO2_PER_KM
+        y_tobe_co2 += v_scen * d_scen * CO2_PER_KM
+        
+        y_asis_time += v_scen * (d_scen_alt / SPEED_KM_H)
+        y_tobe_time += v_scen * (d_scen / SPEED_KM_H)
         
     cum_asis_cost += y_asis_cost; cum_tobe_cost += y_tobe_cost
     cum_asis_co2 += y_asis_co2; cum_tobe_co2 += y_tobe_co2
@@ -231,7 +303,7 @@ with col_g2:
     st.plotly_chart(fig_co2, use_container_width=True)
 
 # ==========================================
-# 6. Groq AI 분석 및 데이터 다운로드 (버그 수정 완료)
+# 6. Groq AI 분석 및 데이터 다운로드
 # ==========================================
 st.markdown("---")
 st.subheader("🤖 AI 물류 지경학 평론 및 리포트 생성")
@@ -240,14 +312,24 @@ if st.button("🚀 AI 리포트 생성 (Groq)"):
     with st.spinner("AI가 데이터를 분석하여 인사이트를 도출하고 있습니다..."):
         try:
             client = Groq(api_key=GROQ_API_KEY)
+            
+            # 시나리오 반영 여부에 따른 프롬프트 동적 생성
+            if enable_scenario:
+                scen_context = f"""또한 이번 시뮬레이션에는 특수 지경학 시나리오인 [{scen_name}]이 반영되었으며, [{scen_port}]를 통해 들어온 {scen_volume:,} 톤의 원자재(셰일가스/원유)가 [{scen_company}] 거점으로 연계 수송되는 상황이 포함되어 있습니다. 이 특수 목적 화물의 최적 항만 매핑이 갖는 경제적 가치와 GS칼텍스, HD현대오일뱅크 등 국내 석유화학 대기업들의 인프라 효율성 측면도 기술해 주세요."""
+            else:
+                scen_context = "일반적인 국내 주요 권역별 컨테이너 및 산업 물류망을 기준으로 분석해 주세요."
+                
             prompt = f"""
             당신은 국가 물류 통계학 및 해사지경학 전문가입니다.
             현재 설계된 {target_years}년 장기 물류 시뮬레이션 결과, 화물 노선을 최적화할 경우
             - 누적 물류비 절감액: {final_saved_cost:,.0f} 억원
             - 누적 이산화탄소(CO2) 감축량: {final_saved_co2:,.0f} 톤
             이 절감됨이 확인되었습니다.
+            
+            {scen_context}
+            
             이 데이터를 바탕으로 정책 제언 및 분석 코멘트를 3문단으로 한글로 작성해 주세요. 
-            경제성 향상과 ESG 경영 측면을 강조해주세요.
+            국가 경제성 향상과 탄소 중립(ESG 경영) 측면을 강력하게 강조하여 논문 결론이나 보고서 수준으로 서술해 주세요.
             """
             
             completion = client.chat.completions.create(
@@ -255,12 +337,10 @@ if st.button("🚀 AI 리포트 생성 (Groq)"):
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7
             )
-            # 결과를 세션 메모리에 저장합니다.
             st.session_state.ai_report = completion.choices[0].message.content
         except Exception as e:
             st.error(f"AI 리포트 생성 중 오류가 발생했습니다: {e}")
 
-# 메모리에 리포트가 저장되어 있다면 언제나 화면에 표시하고 다운로드 버튼을 활성화합니다.
 if st.session_state.ai_report:
     st.success("✅ AI 리포트 생성 완료!")
     st.info(st.session_state.ai_report)
