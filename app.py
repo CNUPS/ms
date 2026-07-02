@@ -22,17 +22,17 @@ if "ai_report" not in st.session_state:
 PUBLIC_API_KEY = "1eb996aa9f090abe783bc0e43ce71bfe1cd54103dc78fd112691684281e839a7"
 GROQ_API_KEY = "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"
 
-# [기존] 내륙 수송(트럭) 상수 설정
+# 내륙 수송(트럭) 상수 설정
 COST_PER_KM = 2500       # 1TEU(Ton)당 1km 운송비 (원)
 CO2_PER_KM = 1.15        # 1TEU(Ton)당 1km CO2 배출 (kg)
 SPEED_KM_H = 60          # 트럭 평균 속도 (km/h)
 
-# 🌊 [신규] 해상 수송(외항 대형 선박) 상수 설정
+# 해상 수송(외항 대형 선박) 상수 설정
 SEA_COST_PER_KM = 15     # 1Ton당 1km 해상 운송비 (원)
 SEA_CO2_PER_KM = 0.02    # 1Ton당 1km 해상 CO2 배출 (kg)
 SEA_SPEED_KM_H = 30      # 선박 평균 속도 (km/h)
 
-# [신규] 시나리오별 해외 출발지 -> 국내 항만까지의 해상 거리 매트릭스 (km)
+# 시나리오별 해외 출발지 -> 국내 항만까지의 해상 거리 매트릭스 (km)
 SEA_DIST_MATRIX = {
     '북극항로(러시아)': {
         '부산항': 3500,  # 동해/남해 직행
@@ -165,7 +165,7 @@ with col_table:
         with scen1_col2:
             s1_hub = st.selectbox("A-3. 연계 에너지·정유 대기업 거점", ["GS칼텍스 (여수)", "HD현대오일뱅크 (충청도)", "SK이노베이션 (울산)"], index=0, key="s1_hub_key")
             if "GS칼텍스" in s1_hub: s1_target, s1_company = "여수", "GS칼텍스 여수공장"
-            elif "HD현대오일bsch" in s1_hub or "현대오일" in s1_hub or "충청도" in s1_hub: s1_target, s1_company = "충청도", "HD현대오일뱅크 대산공장"
+            elif "HD현대오일" in s1_hub or "충청도" in s1_hub: s1_target, s1_company = "충청도", "HD현대오일뱅크 대산공장"
             else: s1_target, s1_company = "울산", "SK이노베이션 울산 CLX"
             
         s1_sea_dist = SEA_DIST_MATRIX['북극항로(러시아)'][s1_port]
@@ -186,7 +186,7 @@ with col_table:
         with scen2_col2:
             s2_hub = st.selectbox("B-3. 연계 에너지·정유 대기업 거점", ["GS칼텍스 (여수)", "HD현대오일뱅크 (충청도)", "SK이노베이션 (울산)"], index=1, key="s2_hub_key")
             if "GS칼텍스" in s2_hub: s2_target, s2_company = "여수", "GS칼텍스 여수공장"
-            elif "HD현대오일" in s2_hub or "현대오일" in s2_hub or "충청도" in s2_hub: s2_target, s2_company = "충청도", "HD현대오일뱅크 대산공장"
+            elif "HD현대오일" in s2_hub or "충청도" in s2_hub: s2_target, s2_company = "충청도", "HD현대오일뱅크 대산공장"
             else: s2_target, s2_company = "울산", "SK이노베이션 울산 CLX"
             
         s2_sea_dist = SEA_DIST_MATRIX['미국에너지'][s2_port]
@@ -357,7 +357,7 @@ with col_g2:
     st.plotly_chart(fig_co2, use_container_width=True)
 
 # ==========================================
-# 6. Groq AI 분석 및 데이터 다운로드
+# 6. Groq AI 분석 및 데이터 다운로드 (🚨 모델 최신화 반영)
 # ==========================================
 st.markdown("---")
 st.subheader("🤖 AI 물류 지경학 평론 및 리포트 생성")
@@ -391,8 +391,9 @@ if st.button("🚀 AI 리포트 생성 (Groq)"):
             단순 내륙 수송을 넘어 '해상 물류의 지리적 한계 극복'과 '탄소 중립(ESG 경영)' 측면을 논문 결론이나 고위급 브리핑 보고서 수준으로 서술해 주세요.
             """
             
+            # 🚨 구형 llama3-8b-8192 모델 대신 Groq에서 공식 권장하는 최신 'llama-3.1-8b-instant' 모델로 교체
             completion = client.chat.completions.create(
-                model="llama3-8b-8192",
+                model="llama-3.1-8b-instant",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7
             )
