@@ -110,12 +110,8 @@ initial_data = [
     {'지역': '포항', '현재 물류량(Ton)': 200000, '현재사용항만': '부산항', '향후선택항만': '부산항'},
     {'지역': '경주', '현재 물류량(Ton)': 95000, '현재사용항만': '부산항', '향후선택항만': '부산항'},
     {'지역': '전주', '현재 물류량(Ton)': 105000, '현재사용항만': '인천항', '향후선택항만': '인천항'},
-    {'지역': '원주', 'currently 물류량(Ton)': 70000, '현재사용항만': '인천항', '향후선택항만': '인천항'},
+    {'지역': '원주', '현재 물류량(Ton)': 70000, '현재사용항만': '인천항', '향후선택항만': '인천항'},
 ]
-# 오타 수정 적용 (currently -> 현재 물류량(Ton))
-for d in initial_data:
-    if 'currently 물류량(Ton)' in d:
-        d['현재 물류량(Ton)'] = d.pop('currently 물류량(Ton)')
 
 df_input = pd.DataFrame(initial_data)
 
@@ -132,53 +128,55 @@ with col_table:
             "현재사용항만": st.column_config.SelectboxColumn(options=["인천항", "부산항"]),
             "향후선택항만": st.column_config.SelectboxColumn(options=["인천항", "부산항"])
         },
-        use_container_width=True, hide_index=True, height=400
+        use_container_width=True, hide_index=True, height=380
     )
     
-    # 🔮 [신규 기능] 미래 예상 시나리오 체크박스 및 레이아웃
+    # 🔮 [개조 완료] 독립형 미래 복합 시나리오 관리 구역
     st.markdown("---")
-    enable_scenario = st.checkbox("🔮 특수 미래 외교/지경학적 예상 시나리오 도입 선언")
+    st.markdown("### 🔮 외교 및 지경학적 미래 예상 시나리오 독립 도입")
+    st.caption("체크박스를 통해 두 시나리오를 각각 제어하거나 동시에 활성화하여 연동할 수 있습니다.")
     
-    scen_volume = 0
-    scen_port = "인천항"
-    scen_target_region = "여수"
-    scen_name = ""
-    scen_company = ""
+    # --- 시나리오 1: 북극항로 개통 ---
+    scen1_enabled = st.checkbox("⚓ 시나리오 A 활성화: 북극항로 개통 노선 도입")
+    s1_vol, s1_port, s1_target, s1_company = 0, "인천항", "여수", ""
     
-    if enable_scenario:
-        st.markdown("#### 🚀 시나리오 세부 설정")
-        scen_col1, scen_col2 = st.columns(2)
-        
-        with scen_col1:
-            scen_type = st.radio("1. 핵심 지경학 시나리오 선택", ["북극항로 개통 노선", "미국 셰일에너지 교류 확대"])
-            scen_volume = st.number_input("2. 예상 추가 물류량 입력 (Ton)", value=150000, step=10000)
-            
-        with scen_col2:
-            scen_port = st.selectbox("3. 원료 입항 선택 항만", ["인천항", "부산항"])
-            scen_company_hub = st.selectbox("4. 가공/발전 대상 정유사 거점 선택", [
-                "GS칼텍스 (여수)", 
-                "HD현대오일뱅크 (충청도)", 
-                "SK이노베이션 (울산)"
-            ])
-            
-        # 선택된 정유사 매핑
-        if "GS칼텍스" in scen_company_hub:
-            scen_target_region = "여수"
-            scen_company = "GS칼텍스 여수공장"
-        elif "HD현대오일뱅크" in scen_company_hub:
-            scen_target_region = "충청도"
-            scen_company = "HD현대오일뱅크 대산공장"
-        else:
-            scen_target_region = "울산"
-            scen_company = "SK이노베이션 울산 CLX"
-            
-        scen_name = scen_type
-        st.success(f"🎯 반영 완료: [{scen_name}]를 통해 수입된 원료 {scen_volume:,} Ton이 [{scen_port}]에 선적되어 내륙의 [{scen_company}]으로 이동합니다.")
+    if scen1_enabled:
+        st.markdown("##### 📥 [시나리오 A] 세부 변수 제어")
+        scen1_col1, scen1_col2 = st.columns(2)
+        with scen1_col1:
+            s1_vol = st.number_input("A-1. 예상 추가 수입량 (Ton)", value=150000, step=10000, key="s1_vol_key")
+            s1_port = st.selectbox("A-2. 원료 입항 선택 항만", ["인천항", "부산항"], index=0, key="s1_port_key")
+        with scen1_col2:
+            s1_hub = st.selectbox("A-3. 연계 에너지·정유 대기업 거점", ["GS칼텍스 (여수)", "HD현대오일뱅크 (충청도)", "SK이노베이션 (울산)"], index=0, key="s1_hub_key")
+            if "GS칼텍스" in s1_hub: s1_target, s1_company = "여수", "GS칼텍스 여수공장"
+            elif "HD현대오일뱅크" in s1_hub: s1_target, s1_company = "충청도", "HD현대오일뱅크 대산공장"
+            else: s1_target, s1_company = "울산", "SK이노베이션 울산 CLX"
+        st.caption(f"📍 반영 현황: 북극항로 자원 {s1_vol:,} Ton ➡️ {s1_port} ➡️ {s1_company}({s1_target}) 이동")
+
+    st.markdown(" ") # 여백
+
+    # --- 시나리오 2: 미국 셰일에너지 교류 ---
+    scen2_enabled = st.checkbox("🇺🇸 시나리오 B 활성화: 미국 셰일에너지 교류 확대")
+    s2_vol, s2_port, s2_target, s2_company = 0, "인천항", "여수", ""
+    
+    if scen2_enabled:
+        st.markdown("##### 📥 [시나리오 B] 세부 변수 제어")
+        scen2_col1, scen2_col2 = st.columns(2)
+        with scen2_col1:
+            s2_vol = st.number_input("B-1. 예상 추가 수입량 (Ton)", value=200000, step=10000, key="s2_vol_key")
+            s2_port = st.selectbox("B-2. 원료 입항 선택 항만", ["인천항", "부산항"], index=1, key="s2_port_key")
+        with scen2_col2:
+            s2_hub = st.selectbox("B-3. 연계 에너지·정유 대기업 거점", ["GS칼텍스 (여수)", "HD현대오일뱅크 (충청도)", "SK이노베이션 (울산)"], index=1, key="s2_hub_key")
+            if "GS칼텍스" in s2_hub: s2_target, s2_company = "여수", "GS칼텍스 여수공장"
+            elif "HD현대오일뱅크" in s2_hub: s2_target, s2_company = "충청도", "HD현대오일뱅크 대산공장"
+            else: s2_target, s2_company = "울산", "SK이노베이션 울산 CLX"
+        st.caption(f"📍 반영 현황: 미국 셰일자원 {s2_vol:,} Ton ➡️ {s2_port} ➡️ {s2_company}({s2_target}) 이동")
 
 with col_map:
     st.subheader("📍 향후 선택 항만 물류 네트워크")
     
     map_data = []
+    # 일반 권역 데이터 추가
     for _, row in edited_df.iterrows():
         start_lon, start_lat = COORDS[row['지역']]
         end_lon, end_lat = COORDS[row['향후선택항만']]
@@ -188,13 +186,22 @@ with col_map:
             "end": [end_lon, end_lat], "color": color
         })
         
-    # 시나리오 활성화 시 지도에 특수 보라색 아크(Arc)선 추가
-    if enable_scenario and scen_volume > 0:
-        s_lon, s_lat = COORDS[scen_target_region]
-        p_lon, p_lat = COORDS[scen_port]
+    # 시나리오 A가 활성화된 경우 지도에 [보라색] 특수 아크 추가
+    if scen1_enabled and s1_vol > 0:
+        s_lon, s_lat = COORDS[s1_target]
+        p_lon, p_lat = COORDS[s1_port]
         map_data.append({
-            "region": f"시나리오: {scen_company}", "start": [s_lon, s_lat],
-            "end": [p_lon, p_lat], "color": [155, 89, 182, 255] # 강조용 불투명 보라색
+            "region": f"시나리오 A: {s1_company}", "start": [s_lon, s_lat],
+            "end": [p_lon, p_lat], "color": [155, 89, 182, 255] # 불투명 보라색
+        })
+        
+    # 시나리오 B가 활성화된 경우 지도에 [주황색] 특수 아크 추가
+    if scen2_enabled and s2_vol > 0:
+        s_lon, s_lat = COORDS[s2_target]
+        p_lon, p_lat = COORDS[s2_port]
+        map_data.append({
+            "region": f"시나리오 B: {s2_company}", "start": [s_lon, s_lat],
+            "end": [p_lon, p_lat], "color": [230, 126, 34, 255] # 불투명 주황색
         })
         
     df_map = pd.DataFrame(map_data)
@@ -213,7 +220,7 @@ with col_map:
     st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, map_style="road"))
 
 # ==========================================
-# 4. 시뮬레이션 연산 (기존 데이터 + 시나리오 추가 반영)
+# 4. 복합 시뮬레이션 연산
 # ==========================================
 years_range = np.arange(1, 51)
 asis_cost_list, tobe_cost_list = [], []
@@ -225,7 +232,7 @@ cum_asis_cost = cum_tobe_cost = cum_asis_co2 = cum_tobe_co2 = cum_asis_time = cu
 for y in years_range:
     y_asis_cost = y_tobe_cost = y_asis_co2 = y_tobe_co2 = y_asis_time = y_tobe_time = 0
     
-    # 기본 지역 물류 연산
+    # 기본 권역별 데이터 연산
     for _, row in edited_df.iterrows():
         r = row['지역']
         v = row['현재 물류량(Ton)'] * ((1 + current_growth/100) ** y) 
@@ -237,24 +244,33 @@ for y in years_range:
         y_asis_co2 += v * d_asis * CO2_PER_KM; y_tobe_co2 += v * d_tobe * CO2_PER_KM
         y_asis_time += v * (d_asis / SPEED_KM_H); y_tobe_time += v * (d_tobe / SPEED_KM_H)
         
-    # 시나리오 체크 시 추가 연산 반영 (To-Be 경로에 추가 물류량 반영)
-    if enable_scenario and scen_volume > 0:
-        # 시나리오 물류량도 성장률의 영향을 받아 미래에 누적된다고 가정
-        v_scen = scen_volume * ((1 + current_growth/100) ** y)
-        d_scen = dist_matrix[scen_target_region][scen_port]
+    # [연산 반영] 시나리오 A가 켜져 있으면 독립 누적 계산
+    if scen1_enabled and s1_vol > 0:
+        v_scen1 = s1_vol * ((1 + current_growth/100) ** y)
+        d_scen1 = dist_matrix[s1_target][s1_port]
+        alt_port1 = "부산항" if s1_port == "인천항" else "인천항"
+        d_scen1_alt = dist_matrix[s1_target][alt_port1]
         
-        # As-Is 상황에서는 해당 시나리오 준비가 안 되어 물류 이동 거리가 비효율적인 반대편 항만을 강제 사용한다고 가정 (패널티 부여 계산)
-        alt_port = "부산항" if scen_port == "인천항" else "인천항"
-        d_scen_alt = dist_matrix[scen_target_region][alt_port]
+        y_asis_cost += v_scen1 * d_scen1_alt * COST_PER_KM
+        y_tobe_cost += v_scen1 * d_scen1 * COST_PER_KM
+        y_asis_co2 += v_scen1 * d_scen1_alt * CO2_PER_KM
+        y_tobe_co2 += v_scen1 * d_scen1 * CO2_PER_KM
+        y_asis_time += v_scen1 * (d_scen1_alt / SPEED_KM_H)
+        y_tobe_time += v_scen1 * (d_scen1 / SPEED_KM_H)
         
-        y_asis_cost += v_scen * d_scen_alt * COST_PER_KM
-        y_tobe_cost += v_scen * d_scen * COST_PER_KM
+    # [연산 반영] 시나리오 B가 켜져 있으면 독립 누적 계산 (동시 적용 가능)
+    if scen2_enabled and s2_vol > 0:
+        v_scen2 = s2_vol * ((1 + current_growth/100) ** y)
+        d_scen2 = dist_matrix[s2_target][s2_port]
+        alt_port2 = "부산항" if s2_port == "인천항" else "인천항"
+        d_scen2_alt = dist_matrix[s2_target][alt_port2]
         
-        y_asis_co2 += v_scen * d_scen_alt * CO2_PER_KM
-        y_tobe_co2 += v_scen * d_scen * CO2_PER_KM
-        
-        y_asis_time += v_scen * (d_scen_alt / SPEED_KM_H)
-        y_tobe_time += v_scen * (d_scen / SPEED_KM_H)
+        y_asis_cost += v_scen2 * d_scen2_alt * COST_PER_KM
+        y_tobe_cost += v_scen2 * d_scen2 * COST_PER_KM
+        y_asis_co2 += v_scen2 * d_scen2_alt * CO2_PER_KM
+        y_tobe_co2 += v_scen2 * d_scen2 * CO2_PER_KM
+        y_asis_time += v_scen2 * (d_scen2_alt / SPEED_KM_H)
+        y_tobe_time += v_scen2 * (d_scen2 / SPEED_KM_H)
         
     cum_asis_cost += y_asis_cost; cum_tobe_cost += y_tobe_cost
     cum_asis_co2 += y_asis_co2; cum_tobe_co2 += y_tobe_co2
@@ -313,23 +329,29 @@ if st.button("🚀 AI 리포트 생성 (Groq)"):
         try:
             client = Groq(api_key=GROQ_API_KEY)
             
-            # 시나리오 반영 여부에 따른 프롬프트 동적 생성
-            if enable_scenario:
-                scen_context = f"""또한 이번 시뮬레이션에는 특수 지경학 시나리오인 [{scen_name}]이 반영되었으며, [{scen_port}]를 통해 들어온 {scen_volume:,} 톤의 원자재(셰일가스/원유)가 [{scen_company}] 거점으로 연계 수송되는 상황이 포함되어 있습니다. 이 특수 목적 화물의 최적 항만 매핑이 갖는 경제적 가치와 GS칼텍스, HD현대오일뱅크 등 국내 석유화학 대기업들의 인프라 효율성 측면도 기술해 주세요."""
+            # 동적 프롬프트 콘텍스트 빌더 (두 시나리오 결합 유무 감지)
+            scen_contexts = []
+            if scen1_enabled and s1_vol > 0:
+                scen_contexts.append(f"▶️ [시나리오 A: 북극항로 개통 노선] 활성화 ({s1_vol:,} 톤 자원이 {s1_port}을 경유하여 {s1_company} 거점으로 연계 수송)")
+            if scen2_enabled and s2_vol > 0:
+                scen_contexts.append(f"▶️ [시나리오 B: 미국 셰일에너지 교류 확대] 활성화 ({s2_vol:,} 톤 자원이 {s2_port}을 경유하여 {s2_company} 거점으로 연계 수송)")
+                
+            if scen_contexts:
+                scen_context_str = "이번 시뮬레이션은 특수 다변화 시나리오인\n" + "\n".join(scen_contexts) + "\n가 복합적으로 결합 반영된 상태입니다. 에너지 자원 및 국가 전략 원재료의 인입 항만 매핑이 갖는 거시경제적 안정성과 GS칼텍스, HD현대오일뱅크, SK이노베이션 등 국내 기간 정유에너지 인프라의 가동 효율성을 지경학적(Geopolitical) 관점에서 다루어 주세요."
             else:
-                scen_context = "일반적인 국내 주요 권역별 컨테이너 및 산업 물류망을 기준으로 분석해 주세요."
+                scen_context_str = "일반적인 국내 주요 권역별 컨테이너 및 산업 물류망을 기준으로 분석해 주세요."
                 
             prompt = f"""
-            당신은 국가 물류 통계학 및 해사지경학 전문가입니다.
-            현재 설계된 {target_years}년 장기 물류 시뮬레이션 결과, 화물 노선을 최적화할 경우
+            당신은 국가 물류 통계학 및 해사지경학 최고 권위자입니다.
+            현재 설계된 {target_years}년 장기 복합 물류 시뮬레이션 결과, 화물 노선을 최적화할 경우
             - 누적 물류비 절감액: {final_saved_cost:,.0f} 억원
             - 누적 이산화탄소(CO2) 감축량: {final_saved_co2:,.0f} 톤
-            이 절감됨이 확인되었습니다.
+            이 절감됨이 정량적으로 증명되었습니다.
             
-            {scen_context}
+            {scen_context_str}
             
-            이 데이터를 바탕으로 정책 제언 및 분석 코멘트를 3문단으로 한글로 작성해 주세요. 
-            국가 경제성 향상과 탄소 중립(ESG 경영) 측면을 강력하게 강조하여 논문 결론이나 보고서 수준으로 서술해 주세요.
+            이 데이터를 바탕으로 대한민국 해상 물류의 국가 정책적 제언과 대기업 인프라 효율성 분석 코멘트를 명확히 구분하여 3문단으로 한글로 작성해 주세요. 
+            국가 경제 활성화와 ESG 에너지 탄소 중립 측면을 강력하게 강조하여 논문 결론이나 고위급 브리핑 보고서 수준으로 서술해 주세요.
             """
             
             completion = client.chat.completions.create(
